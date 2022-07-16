@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -46,16 +47,25 @@ public class Main {
                 out = clientSocket.getOutputStream();
                 outs.add(out);
                 byte[] buffer = new byte[128];
-                while (!clientSocket.isClosed()) {
+                while (true) {
                     try {
+                        int total_read = 0;
                         int read = 0;
-                        while (read < MESSAGE_SIZE) {
-                            read += in.read(buffer, read, MESSAGE_SIZE - read);
+                        while (total_read < MESSAGE_SIZE) {
+                            read = in.read(buffer, read, MESSAGE_SIZE - read);
+                            if (-1 == read) {
+                                System.err.println("A client has closed data stream");
+                                return;
+                            }
+                            total_read += read;
                         }
-                    } catch (Exception e) {
+                    } catch (SocketException e) {
+                        System.err.println("Client seem to be disconnected forcibly");
+                        return;
+                    } catch (IOException e) {
                         System.err.println("Unexpected error during read");
                         e.printStackTrace();
-                        break;
+                        return;
                     }
                     Iterator<OutputStream> iterator = outs.iterator();
                     while (iterator.hasNext()) {
