@@ -41,7 +41,6 @@ public class Main {
                 readBuffer.clear();
             }
         }
-        socketChannel.configureBlocking(true);
         socketChannel.close();
     }
 }
