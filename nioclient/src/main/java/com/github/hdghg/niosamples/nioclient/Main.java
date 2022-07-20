@@ -10,6 +10,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class Main {
@@ -17,7 +19,9 @@ public class Main {
         InetSocketAddress hostAddress = new InetSocketAddress("localhost", 7171);
         SocketChannel socketChannel = SocketChannel.open(hostAddress);
         socketChannel.configureBlocking(false);
-        InputStreamReader inputStreamReader = new InputStreamReader(System.in);
+        Charset consoleEncoding = Common.guessConsoleEncoding();
+        System.out.println("Console encoding detected as " + consoleEncoding);
+        InputStreamReader inputStreamReader = new InputStreamReader(System.in, consoleEncoding);
         BufferedReader br = new BufferedReader(inputStreamReader);
         String line = "";
         ByteBuffer readBuffer = ByteBuffer.allocate(Common.MESSAGE_SIZE);
@@ -26,16 +30,18 @@ public class Main {
         while (!"quit".equals(line)) {
             if (br.ready()) {
                 line = br.readLine();
-                byte[] bytes = Arrays.copyOf(line.getBytes(), Common.MESSAGE_SIZE);
+                byte[] bytes = Arrays.copyOf(line.getBytes(StandardCharsets.UTF_8), Common.MESSAGE_SIZE);
                 ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
                 socketChannel.write(byteBuffer);
             }
             while ((selector.select(125) > 0) && (Common.MESSAGE_SIZE == socketChannel.read(readBuffer))) {
                 selector.selectedKeys().clear();
-                System.err.println(Common.messageToString(readBuffer.array()));
+                byte[] array = readBuffer.array();
+                System.err.println(Common.messageToString(array));
                 readBuffer.clear();
             }
         }
+        socketChannel.configureBlocking(true);
         socketChannel.close();
     }
 }
